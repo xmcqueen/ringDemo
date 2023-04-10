@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"container/ring"
 	"flag"
 	"fmt"
@@ -9,39 +8,6 @@ import (
 
 	"github.com/tidwall/wal"
 )
-
-type FileReader struct {
-	Validate func(os.FileInfo, error) error
-	Name     string
-
-	Value *bufio.Reader
-}
-
-func (fv *FileReader) Set(v string) error {
-	_, err := os.Stat(v)
-	if err != nil {
-		return err
-	}
-
-	inFile, err := os.Open(v)
-	if err != nil {
-		return err
-	}
-
-	inputReader := bufio.NewReader(inFile)
-	fv.Name = v
-	fv.Value = inputReader
-
-	return err
-}
-
-func (fv *FileReader) Get() *bufio.Reader {
-	return fv.Value
-}
-
-func (fv *FileReader) String() string {
-	return fv.Name
-}
 
 func check(e error) {
 	if e != nil {
@@ -55,8 +21,8 @@ func main() {
 	defer log.Close()
 
 	defaultBufSize := 55
-	var fr FileReader
-	flag.Var(&fr, "f", "file to read from defaults to stdin")
+	var fs FileScanner
+	flag.Var(&fs, "f", "file to read from defaults to stdin")
 	bufsize := flag.Int("n", defaultBufSize, "how many lines to keep in the buffer")
 
 	flag.Parse()
@@ -69,10 +35,8 @@ func main() {
 
 	r := ring.New(*bufsize)
 
-	fileScanner := bufio.NewScanner(fr.Get())
-
-	for fileScanner.Scan() {
-		r.Value = fileScanner.Text()
+	for fs.Get().Scan() {
+		r.Value = fs.Get().Text()
 		r = r.Next()
 	}
 
