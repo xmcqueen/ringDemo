@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"container/ring"
 	"flag"
 	"fmt"
@@ -21,7 +22,7 @@ func main() {
 	defer log.Close()
 
 	defaultBufSize := 55
-	var fs FileScanner
+	var fs FileScanner = FileScanner{Name: "stdin", Value: bufio.NewScanner(os.Stdin)}
 	flag.Var(&fs, "f", "file to read from defaults to stdin")
 	bufsize := flag.Int("n", defaultBufSize, "how many lines to keep in the buffer")
 
