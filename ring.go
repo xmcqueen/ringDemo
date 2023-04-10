@@ -10,6 +10,39 @@ import (
 	"github.com/tidwall/wal"
 )
 
+type FileReader struct {
+	Validate func(os.FileInfo, error) error
+	Name     string
+
+	Value *bufio.Reader
+}
+
+func (fv *FileReader) Set(v string) error {
+	_, err := os.Stat(v)
+	if err != nil {
+		return err
+	}
+
+	inFile, err := os.Open(v)
+	if err != nil {
+		return err
+	}
+
+	inputReader := bufio.NewReader(inFile)
+	fv.Name = v
+	fv.Value = inputReader
+
+	return err
+}
+
+func (fv *FileReader) Get() *bufio.Reader {
+	return fv.Value
+}
+
+func (fv *FileReader) String() string {
+	return fv.Name
+}
+
 func check(e error) {
 	if e != nil {
 		panic(e)
@@ -18,27 +51,16 @@ func check(e error) {
 
 func main() {
 
-	log, err := wal.Open("mylog", nil)
+	log, _ := wal.Open("mylog", nil)
 	defer log.Close()
 
-	inputReader := bufio.NewReader(os.Stdin)
-	defaultInput := "-"
 	defaultBufSize := 55
-	nFlag := flag.String("f", defaultInput, "file to read from defaults to stdin")
+	var fr FileReader
+	flag.Var(&fr, "f", "file to read from defaults to stdin")
 	bufsize := flag.Int("n", defaultBufSize, "how many lines to keep in the buffer")
-	var inFile *os.File
-	inFile.Close()
 
 	flag.Parse()
-	fmt.Println("nflag", *nFlag)
 	fmt.Println("bufsize", *bufsize)
-	if *nFlag != defaultInput {
-		fmt.Println("got a cli arg for input file", *nFlag)
-		inFile, err = os.Open(*nFlag)
-		check(err)
-
-		inputReader = bufio.NewReader(inFile)
-	}
 
 	if *bufsize < 1 {
 		fmt.Fprintf(os.Stderr, "bufsize must be positive:bufsize:%d:is not a valid bufsize\n", *bufsize)
@@ -47,7 +69,7 @@ func main() {
 
 	r := ring.New(*bufsize)
 
-	fileScanner := bufio.NewScanner(inputReader)
+	fileScanner := bufio.NewScanner(fr.Get())
 
 	for fileScanner.Scan() {
 		r.Value = fileScanner.Text()
